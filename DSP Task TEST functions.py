@@ -4,6 +4,19 @@
 
 # %%
 
+from functions import ( ReadSignalFile, AddSignals, SubtractSignals, MultiplySignal, ShiftSignal, FoldSignal)
+
+
+
+i1,s1= ReadSignalFile("Signal1.txt")
+i2,s2= ReadSignalFile("Signal2.txt")
+
+add_i, add_s = AddSignals([(i1, s1), (i2, s2)])
+sub_i, sub_s = SubtractSignals((i1,s1), (i2,s2))
+mul_i, mul_s = MultiplySignal((i1,s1), 5)
+sh_i, sh_s = ShiftSignal((i1,s1), -3)
+fol_i, fol_s = FoldSignal((i1,s1))
+
 def ReadSignalFile(file_name):
     expected_indices=[]
     expected_samples=[]
@@ -49,7 +62,7 @@ def AddSignalSamplesAreEqual(userFirstSignal,userSecondSignal,Your_indices,Your_
             return
     print("Addition Test case passed successfully")
 
-AddSignalSamplesAreEqual("Signal1.txt", "Signal2.txt",indicies,samples) # call this function with your computed indicies and samples
+AddSignalSamplesAreEqual("Signal1.txt", "Signal2.txt",add_i,add_s) # call this function with your computed indicies and samples
 
 
 # %%
@@ -75,7 +88,7 @@ def SubSignalSamplesAreEqual(userFirstSignal,userSecondSignal,Your_indices,Your_
             return
     print("Subtraction Test case passed successfully")
     
-SubSignalSamplesAreEqual("Signal1.txt", "Signal2.txt",indicies,samples)  # call this function with your computed indicies and samples
+SubSignalSamplesAreEqual("Signal1.txt", "Signal2.txt",sub_i,sub_s)  # call this function with your computed indicies and samples
 
 
 # %%
@@ -101,7 +114,7 @@ def MultiplySignalByConst(User_Const,Your_indices,Your_samples):
             return
     print("Multiply by "+str(User_Const)+" Test case passed successfully")
 
-MultiplySignalByConst(5,indicies, samples)# call this function with your computed indicies and samples
+MultiplySignalByConst(5,mul_i, mul_s)# call this function with your computed indicies and samples
 
 
 # %%
@@ -129,7 +142,7 @@ def ShiftSignalByConst(Shift_value,Your_indices,Your_samples):
             return
     print("Shift by "+str(Shift_value)+" Test case passed successfully")
 
-ShiftSignalByConst(3,indicies,samples)  # call this function with your computed indicies and samples
+ShiftSignalByConst(3,sh_i,sh_s)  # call this function with your computed indicies and samples
 
 # %%
 
@@ -152,6 +165,6 @@ def Folding(Your_indices,Your_samples):
             return
     print("Folding Test case passed successfully")
 
-Folding(indicies,samples)  # call this function with your computed indicies and samples
+Folding(fol_i,fol_s)  # call this function with your computed indicies and samples
 
 # %%

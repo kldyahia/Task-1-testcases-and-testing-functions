@@ -18,7 +18,6 @@ def ReadSignalFile(file_name):
 
         n = int(lines[0])
 
-        # Normal format
         if len(lines) >= n + 1 and len(lines[1].split()) == 2:
 
             for i in range(1, n + 1):
@@ -50,7 +49,6 @@ def AddSignals(signals):
 
     all_indices = []
 
-    # Get all indices
     for indices, samples in signals:
 
         for index in indices:
@@ -62,7 +60,6 @@ def AddSignals(signals):
 
     result_samples = []
 
-    # Add samples having the same index
     for index in all_indices:
 
         total = 0
@@ -94,9 +91,6 @@ def MultiplySignal(signal, constant):
 
 
 def SubtractSignals(signal1, signal2):
-
-    #signal1 - signal2
-    # = signal1 + (-1 * signal2)
 
     negative_signal2 = MultiplySignal(
         signal2,
@@ -134,10 +128,9 @@ def FoldSignal(signal):
 
         new_indices.append(-index)
 
-    # Keep each index with its sample
+
     folded_signal = list(zip(new_indices, samples))
 
-    # Sort using the new indices
     folded_signal.sort()
 
     result_indices = []
