@@ -9,7 +9,8 @@ from functions import (
     MultiplySignal,
     SubtractSignals,
     ShiftSignal,
-    FoldSignal
+    FoldSignal,
+    QuantizeSignal
 )
 
 
@@ -51,9 +52,10 @@ class DSP_GUI:
         rep_frame = tk.LabelFrame(root, text="Display Representation", padx=10, pady=5)
         rep_frame.pack(pady=5)
 
-        self.rep_var = tk.StringVar(value="discrete")
-        tk.Radiobutton(rep_frame, text="Discrete (Stem)", variable=self.rep_var, value="discrete").pack(side=tk.LEFT, padx=10)
-        tk.Radiobutton(rep_frame, text="Continuous (Line)", variable=self.rep_var, value="continuous").pack(side=tk.LEFT, padx=10)
+        self.rep_var = tk.StringVar(value="continuous")
+        tk.Radiobutton(rep_frame, text="Continuous", variable=self.rep_var, value="continuous").pack(side=tk.LEFT, padx=10)
+        tk.Radiobutton(rep_frame, text="Discrete", variable=self.rep_var, value="discrete").pack(side=tk.LEFT, padx=10)
+
 
         # ==========================================
         # Load Signal
@@ -87,19 +89,21 @@ class DSP_GUI:
 
         display_button = tk.Button(
             display_frame,
-            text="Display Selected Signal",
-            width=22,
-            command=self.display_selected
+            text="Display Selected Signal(s)",
+            width=24,
+            command=self.display_selected_signals
         )
         display_button.grid(row=0, column=0, padx=5)
 
-        display_two_button = tk.Button(
+        delete_button = tk.Button(
             display_frame,
-            text="Display Two Signals",
-            width=22,
-            command=self.display_two_signals
+            text="Delete Selected Signal(s)",
+            width=24,
+            bg="#ffebee",
+            command=self.delete_selected_signals
         )
-        display_two_button.grid(row=0, column=1, padx=5)
+        delete_button.grid(row=0, column=1, padx=5)
+
 
         # ==========================================
         # Multiply
@@ -164,6 +168,16 @@ class DSP_GUI:
             command=self.fold_signal
         )
         fold_button.grid(row=0, column=2, padx=5, pady=5)
+
+        quantize_button = tk.Button(
+            operations_frame,
+            text="Quantize Signal",
+            width=18,
+            bg="#e1f5fe",
+            command=self.quantize_signal
+        )
+        quantize_button.grid(row=1, column=1, padx=5, pady=5)
+
 
         # ==========================================
         # Clear
@@ -288,7 +302,8 @@ class DSP_GUI:
         if representation == "discrete":
             plt.stem(indices, samples)
         else:
-            plt.plot(indices, samples, marker='o')
+            plt.plot(indices, samples)
+
 
         plt.title(title)
         plt.xlabel("n (Sample Index)")
@@ -296,49 +311,69 @@ class DSP_GUI:
         plt.grid(True)
         plt.show()
 
-    def display_selected(self):
-        signal = self.get_one_selected_signal()
-        if signal is not None:
-            self.display_signal(signal, "Selected Signal")
-
     # ==============================================
-    # Display Two Signals at the Same Time
+    # Display Selected Signals (1 or multiple dynamically)
     # ==============================================
-    def display_two_signals(self):
+    def display_selected_signals(self):
         selected = self.signal_list.curselection()
-        if len(selected) != 2:
-            messagebox.showwarning("Warning", "Please select exactly two signals to display together.")
+        if len(selected) == 0:
+            messagebox.showwarning("Warning", "Please select at least one signal to display.")
             return
 
-        sig1 = self.signals[selected[0]]
-        sig2 = self.signals[selected[1]]
+        if len(selected) == 1:
+            signal = self.signals[selected[0]]
+            label = self.signal_list.get(selected[0])
+            self.display_signal(signal, label)
+            return
+
+        # If multiple signals are selected, plot them together on a single plot
         representation = self.rep_var.get()
+        plt.figure(figsize=(10, 6))
 
-        plt.figure(figsize=(8, 6))
+        # Color and line-style palettes for multiple signals
+        colors = ['b', 'r', 'g', 'm', 'c', 'y', 'k', 'tab:orange', 'tab:purple', 'tab:brown']
+        line_styles = ['-', '--', '-.', ':']
 
-        # Subplot 1
-        plt.subplot(2, 1, 1)
-        if representation == "discrete":
-            plt.stem(sig1[0], sig1[1])
-        else:
-            plt.plot(sig1[0], sig1[1], marker='o', color='b')
-        plt.title(self.signal_list.get(selected[0]))
-        plt.ylabel("Amplitude")
-        plt.grid(True)
+        labels = []
+        for idx, sel_idx in enumerate(selected):
+            sig = self.signals[sel_idx]
+            label = self.signal_list.get(sel_idx)
+            labels.append(label)
+            color = colors[idx % len(colors)]
+            style = line_styles[idx % len(line_styles)]
 
-        # Subplot 2
-        plt.subplot(2, 1, 2)
-        if representation == "discrete":
-            plt.stem(sig2[0], sig2[1])
-        else:
-            plt.plot(sig2[0], sig2[1], marker='o', color='r')
-        plt.title(self.signal_list.get(selected[1]))
+            if representation == "discrete":
+                markerline, stemlines, baseline = plt.stem(sig[0], sig[1], label=label)
+                plt.setp(stemlines, color=color, linestyle=style)
+                plt.setp(markerline, color=color)
+                plt.setp(baseline, color='k')
+            else:
+                plt.plot(sig[0], sig[1], color=color, linestyle=style, label=label)
+
+        plt.title("Selected Signals Comparison: " + ", ".join(labels[:3]) + ("..." if len(labels) > 3 else ""))
         plt.xlabel("n (Sample Index)")
         plt.ylabel("Amplitude")
         plt.grid(True)
-
+        plt.legend()
         plt.tight_layout()
         plt.show()
+
+
+    # ==============================================
+    # Delete Selected Signal(s)
+    # ==============================================
+    def delete_selected_signals(self):
+        selected = list(self.signal_list.curselection())
+        if len(selected) == 0:
+            messagebox.showwarning("Warning", "Please select at least one signal to delete.")
+            return
+
+        # Delete in reverse order so indices do not shift while deleting
+        for index in sorted(selected, reverse=True):
+            del self.signals[index]
+            self.signal_list.delete(index)
+
+
 
     # ==============================================
     # Operations (Add, Subtract, Multiply, Shift, Fold)
@@ -384,6 +419,133 @@ class DSP_GUI:
         result = ShiftSignal(signal, k)
         self.display_signal(result, "Shift Result")
 
+    def quantize_signal(self):
+        signal = self.get_one_selected_signal()
+        if signal is None:
+            return
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Quantize Signal")
+        dialog.geometry("340x260")
+        dialog.grab_set()
+
+        choice_var = tk.StringVar(value="bits")
+
+        tk.Label(dialog, text="Select Quantization Parameter:", font=("Arial", 10, "bold")).pack(pady=5)
+        
+        rb_frame = tk.Frame(dialog)
+        rb_frame.pack(pady=5)
+        tk.Radiobutton(rb_frame, text="Number of Bits", variable=choice_var, value="bits").pack(side=tk.LEFT, padx=10)
+        tk.Radiobutton(rb_frame, text="Number of Levels", variable=choice_var, value="levels").pack(side=tk.LEFT, padx=10)
+
+        input_frame = tk.Frame(dialog)
+        input_frame.pack(pady=10)
+        label_val = tk.Label(input_frame, text="Enter Bits:")
+        label_val.pack(side=tk.LEFT, padx=5)
+        entry_val = tk.Entry(input_frame, width=12)
+        entry_val.pack(side=tk.LEFT, padx=5)
+        entry_val.insert(0, "3")
+
+        def on_mode_change(*args):
+            if choice_var.get() == "bits":
+                label_val.config(text="Enter Bits:")
+            else:
+                label_val.config(text="Enter Levels:")
+
+        choice_var.trace_add("write", on_mode_change)
+
+        def execute_quantization():
+            val_str = entry_val.get().strip()
+            if not val_str:
+                messagebox.showerror("Error", "Please enter a value.")
+                return
+            try:
+                num = int(val_str)
+                if num <= 0:
+                    raise ValueError
+            except ValueError:
+                messagebox.showerror("Error", "Please enter a valid positive integer.")
+                return
+
+            try:
+                if choice_var.get() == "bits":
+                    bits = num
+                    levels = None
+                else:
+                    bits = None
+                    levels = num
+
+                indices, quantized_samples, errors, encoded, interval_indices, bits_count, total_levels = QuantizeSignal(
+                    signal, bits=bits, levels=levels
+                )
+                dialog.destroy()
+
+                # Add quantized signal to list
+                self.signals.append((indices, quantized_samples))
+                self.signal_list.insert(tk.END, f"Quantized (levels={total_levels}, bits={bits_count})")
+
+                # Show table window with encoded signal and quantization details
+                result_win = tk.Toplevel(self.root)
+                result_win.title("Quantization Results & Encoded Signal")
+                result_win.geometry("520x400")
+
+                info_label = tk.Label(
+                    result_win,
+                    text=f"Total Levels: {total_levels} | Bits per sample: {bits_count}",
+                    font=("Arial", 11, "bold"),
+                    pady=5
+                )
+                info_label.pack()
+
+                txt_frame = tk.Frame(result_win)
+                txt_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+                scrollbar = tk.Scrollbar(txt_frame)
+                scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+                text_area = tk.Text(txt_frame, yscrollcommand=scrollbar.set, font=("Consolas", 10))
+                text_area.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+                scrollbar.config(command=text_area.yview)
+
+                header = f"{'Index':<7}{'Original':<12}{'Interval':<10}{'Encoded':<10}{'Quantized':<12}{'Error':<12}\n"
+                text_area.insert(tk.END, header)
+                text_area.insert(tk.END, "-" * 63 + "\n")
+
+                orig_samples = signal[1]
+                for i in range(len(indices)):
+                    row = f"{indices[i]:<7}{orig_samples[i]:<12.3f}{interval_indices[i]:<10}{encoded[i]:<10}{quantized_samples[i]:<12.3f}{errors[i]:<12.3f}\n"
+                    text_area.insert(tk.END, row)
+
+                text_area.config(state=tk.DISABLED)
+
+                # Plot Original, Quantized, and Quantization Error in a single plot
+                plt.figure(figsize=(10, 6))
+                representation = self.rep_var.get()
+
+                if representation == "discrete":
+                    plt.stem(indices, orig_samples, linefmt='b-', markerfmt='bo', basefmt='k-', label="Original Signal (x)")
+                    plt.stem(indices, quantized_samples, linefmt='g--', markerfmt='gs', basefmt='k-', label="Quantized Signal (x_q)")
+                    plt.stem(indices, errors, linefmt='r:', markerfmt='r^', basefmt='k-', label="Quantization Error (e = x_q - x)")
+                else:
+                    plt.plot(indices, orig_samples, 'b-', label="Original Signal (x)")
+                    plt.plot(indices, quantized_samples, 'g--', label="Quantized Signal (x_q)")
+                    plt.plot(indices, errors, 'r:', label="Quantization Error (e = x_q - x)")
+
+
+                plt.title("Original Signal, Quantized Signal & Quantization Error")
+                plt.xlabel("n (Sample Index)")
+                plt.ylabel("Amplitude")
+                plt.grid(True)
+                plt.legend()
+                plt.tight_layout()
+                plt.show()
+
+
+            except Exception as e:
+                messagebox.showerror("Error", f"Quantization failed: {e}")
+
+        tk.Button(dialog, text="Quantize", width=14, bg="#c8e6c9", command=execute_quantization).pack(pady=10)
+
     def fold_signal(self):
         signal = self.get_one_selected_signal()
         if signal is None:
@@ -392,6 +554,7 @@ class DSP_GUI:
         self.display_signal(result, "Folding Result")
 
     def clear_signals(self):
+
         self.signals = []
         self.signal_list.delete(0, tk.END)
 
