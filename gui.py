@@ -170,25 +170,6 @@ class SignalProcessingGUI:
 
         ttk.Button(frame, text="Convolve Signals", command=self.apply_convolution).pack(fill=tk.X, padx=5, pady=10)
 
-        # Quick kernels
-        kernel_frame = ttk.LabelFrame(frame, text="Quick Kernels (apply to Signal 1)")
-        kernel_frame.pack(fill=tk.X, padx=5, pady=5)
-
-        kernels = [
-            ("Moving Avg 3", [1/3, 1/3, 1/3]),
-            ("Moving Avg 5", [0.2]*5),
-            ("First Diff", [1, -1]),
-            ("Second Diff", [1, -2, 1]),
-            ("Sharpen", [0, -1, 0, -1, 5, -1, 0, -1, 0]),  # 3x3 sharpen
-        ]
-
-        for i, (name, kernel) in enumerate(kernels):
-            btn = ttk.Button(kernel_frame, text=name, command=lambda k=kernel: self.apply_kernel(k))
-            btn.grid(row=i//2, column=i%2, padx=3, pady=3, sticky=tk.EW)
-
-        kernel_frame.columnconfigure(0, weight=1)
-        kernel_frame.columnconfigure(1, weight=1)
-
     def _build_other_tab(self, parent):
         frame = ttk.LabelFrame(parent, text="Other Operations")
         frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
@@ -389,24 +370,6 @@ class SignalProcessingGUI:
             )
         except Exception as e:
             messagebox.showerror("Error", f"Convolution failed: {e}")
-
-    def apply_kernel(self, kernel):
-        if self.signal1 is None:
-            messagebox.showwarning("Warning", "Load Signal 1 first")
-            return
-        try:
-            # Create kernel signal with indices starting at 0
-            kernel_signal = (list(range(len(kernel))), kernel)
-            self.result_signal = Convolve(self.signal1, kernel_signal)
-            self._update_status(f"Kernel convolution applied ({len(kernel)} taps)")
-            self.view_var.set("result")
-            self.update_plot()
-            self._update_results_text(
-                self._format_signal_info(self.signal1, "Input") + "\n" +
-                self._format_signal_info(self.result_signal, f"Kernel Result (len={len(kernel)})")
-            )
-        except Exception as e:
-            messagebox.showerror("Error", f"Kernel convolution failed: {e}")
 
     def apply_add(self):
         if self.signal1 is None or self.signal2 is None:
