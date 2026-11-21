@@ -193,4 +193,110 @@ def QuantizeSignal(signal, bits=None, levels=None):
         quantization_errors.append(error)
 
     return indices, quantized_samples, quantization_errors, encoded_signals, interval_indices, bits_count, levels
-
+
+
+def MovingAverage(signal, window_size):
+    """
+    Compute moving average of signal with given window size.
+
+    Args:
+        signal: (indices, samples) tuple
+        window_size: int, number of points in averaging window (must be >= 1)
+
+    Returns:
+        (new_indices, averaged_samples) tuple
+        Output length equals input length. Edges use asymmetric windows.
+    """
+    if window_size < 1:
+        raise ValueError("window_size must be >= 1")
+
+    indices, samples = signal
+    n = len(samples)
+    half = window_size // 2
+    result_samples = []
+
+    for i in range(n):
+        # Determine window bounds (centered when possible)
+        start = max(0, i - half)
+        end = min(n, i + half + 1)
+
+        # Adjust for even window sizes to keep window_size elements when possible
+        if end - start < window_size:
+            if start == 0:
+                end = min(n, start + window_size)
+            elif end == n:
+                start = max(0, end - window_size)
+
+        window = samples[start:end]
+        avg = sum(window) / len(window)
+        result_samples.append(avg)
+
+    return indices.copy(), result_samples
+
+
+def FirstDerivative(signal):
+    indices, samples = signal
+    n=len(samples)
+
+    if n<2:
+        return [],[]
+
+    result_indices=[]
+    result_samples=[]
+
+    for i in range(1, n):
+        deriv=samples[i] - samples[i - 1]
+        result_indices.append(indices[i])
+        result_samples.append(deriv)
+
+    return result_indices, result_samples
+
+
+def SecondDerivative(signal):
+    indices, samples = signal
+    n = len(samples)
+
+    if n < 3:
+        return [], []
+    
+    result_indices=[]
+    result_samples=[]
+    for i in range(1,n-1):
+        deriv=samples[i+1]-2*samples[i]+samples[i-1]
+        result_indices.append(indices[i])
+        result_samples.append(deriv)
+
+
+    return result_indices, result_samples
+
+
+def Convolve(signal1, signal2):
+    """
+    Compute convolution of two signals: y(n) = sum(x(k) * h(n-k)).
+
+    Args:
+        signal1: (indices, samples) tuple - input signal
+        signal2: (indices, samples) tuple - impulse response / kernel
+
+    Returns:
+        (conv_indices, conv_samples) tuple
+        Output length = len(signal1) + len(signal2) - 1.
+        Output indices start at idx1[0] + idx2[0].
+    """
+    indices1, samples1 = signal1
+    indices2, samples2 = signal2
+
+    n1 = len(samples1)
+    n2 = len(samples2)
+    n_out = n1 + n2 - 1
+
+    # Output indices start at sum of starting indices
+    start_idx = indices1[0] + indices2[0]
+    conv_indices = [start_idx + i for i in range(n_out)]
+    conv_samples = [0.0] * n_out
+
+    for i in range(n1):
+        for j in range(n2):
+            conv_samples[i + j] += samples1[i] * samples2[j]
+
+    return conv_indices, conv_samples
