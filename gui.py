@@ -120,7 +120,7 @@ class SignalProcessingGUI:
         self.gen_type.grid(row=0, column=1, padx=5, pady=5, sticky=tk.EW)
 
         ttk.Label(gen_frame, text="Length:").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
-        self.gen_length = ttk.Spinbox(gen_frame, from_=10, to=1000, value=50)
+        self.gen_length = ttk.Spinbox(gen_frame, from_=10, to=1000, increment=1, value=50)
         self.gen_length.grid(row=1, column=1, padx=5, pady=5, sticky=tk.EW)
 
         ttk.Label(gen_frame, text="Freq/Param:").grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
@@ -142,7 +142,7 @@ class SignalProcessingGUI:
         frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         ttk.Label(frame, text="Window Size:").grid(row=0, column=0, padx=5, pady=10, sticky=tk.W)
-        self.ma_window = ttk.Spinbox(frame, from_=1, to=100, value=3)
+        self.ma_window = ttk.Spinbox(frame, from_=1, to=100, increment=1, value=3)
         self.ma_window.grid(row=0, column=1, padx=5, pady=10, sticky=tk.EW)
 
         ttk.Label(frame, text="(Odd values give centered average)").grid(row=1, column=0, columnspan=2, padx=5, sticky=tk.W)
