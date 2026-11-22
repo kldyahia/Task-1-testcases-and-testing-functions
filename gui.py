@@ -120,11 +120,15 @@ class SignalProcessingGUI:
         self.gen_type.grid(row=0, column=1, padx=5, pady=5, sticky=tk.EW)
 
         ttk.Label(gen_frame, text="Length:").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
-        self.gen_length = ttk.Spinbox(gen_frame, from_=10, to=1000, increment=1, value=50)
+        self.gen_length = tk.Spinbox(gen_frame, from_=10, to=1000, increment=1)
+        self.gen_length.delete(0, tk.END)
+        self.gen_length.insert(0, "50")
         self.gen_length.grid(row=1, column=1, padx=5, pady=5, sticky=tk.EW)
 
         ttk.Label(gen_frame, text="Freq/Param:").grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
-        self.gen_param = ttk.Spinbox(gen_frame, from_=0.1, to=10.0, increment=0.1, value=1.0)
+        self.gen_param = tk.Spinbox(gen_frame, from_=0.1, to=10.0, increment=0.1, format="%.1f")
+        self.gen_param.delete(0, tk.END)
+        self.gen_param.insert(0, "1.0")
         self.gen_param.grid(row=2, column=1, padx=5, pady=5, sticky=tk.EW)
 
         ttk.Button(gen_frame, text="Generate as Signal 1", command=lambda: self.generate_signal(1)).grid(row=3, column=0, columnspan=2, padx=5, pady=5, sticky=tk.EW)
@@ -142,7 +146,9 @@ class SignalProcessingGUI:
         frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         ttk.Label(frame, text="Window Size:").grid(row=0, column=0, padx=5, pady=10, sticky=tk.W)
-        self.ma_window = ttk.Spinbox(frame, from_=1, to=100, increment=1, value=3)
+        self.ma_window = tk.Spinbox(frame, from_=1, to=100, increment=1)
+        self.ma_window.delete(0, tk.END)
+        self.ma_window.insert(0, "3")
         self.ma_window.grid(row=0, column=1, padx=5, pady=10, sticky=tk.EW)
 
         ttk.Label(frame, text="(Odd values give centered average)").grid(row=1, column=0, columnspan=2, padx=5, sticky=tk.W)
