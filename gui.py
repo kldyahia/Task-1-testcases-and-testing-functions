@@ -103,7 +103,7 @@ class SignalProcessingGUI:
         self.s1_info_label.pack(padx=5, pady=5)
 
         # Signal 2
-        s2_frame = ttk.LabelFrame(parent, text="Signal 2 (For Convolution)")
+        s2_frame = ttk.LabelFrame(parent, text="Signal 2 (Secondary)")
         s2_frame.pack(fill=tk.X, padx=5, pady=5)
 
         ttk.Button(s2_frame, text="Load Signal 2", command=self.load_signal2).pack(fill=tk.X, padx=5, pady=5)
@@ -114,25 +114,26 @@ class SignalProcessingGUI:
         gen_frame = ttk.LabelFrame(parent, text="Generate Test Signal")
         gen_frame.pack(fill=tk.X, padx=5, pady=5)
 
+        # Type selector
         ttk.Label(gen_frame, text="Type:").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
-        self.gen_type = ttk.Combobox(gen_frame, values=["Sine", "Step", "Ramp", "Impulse", "Noise"], state="readonly")
+        self.gen_type = ttk.Combobox(gen_frame, values=["Sine", "Cosine", "Step", "Ramp", "Impulse", "Noise"], state="readonly")
         self.gen_type.current(0)
         self.gen_type.grid(row=0, column=1, padx=5, pady=5, sticky=tk.EW)
+        self.gen_type.bind("<<ComboboxSelected>>", self._on_gen_type_change)
 
+        # Length (common to all)
         ttk.Label(gen_frame, text="Length:").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
         self.gen_length = tk.Spinbox(gen_frame, from_=10, to=1000, increment=1)
         self.gen_length.delete(0, tk.END)
         self.gen_length.insert(0, "50")
         self.gen_length.grid(row=1, column=1, padx=5, pady=5, sticky=tk.EW)
 
-        ttk.Label(gen_frame, text="Freq/Param:").grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
-        self.gen_param = tk.Spinbox(gen_frame, from_=0.1, to=10.0, increment=0.1, format="%.1f")
-        self.gen_param.delete(0, tk.END)
-        self.gen_param.insert(0, "1.0")
-        self.gen_param.grid(row=2, column=1, padx=5, pady=5, sticky=tk.EW)
+        # Dynamic parameter frames (will be shown/hidden based on type)
+        self._build_dynamic_param_frames(gen_frame)
 
-        ttk.Button(gen_frame, text="Generate as Signal 1", command=lambda: self.generate_signal(1)).grid(row=3, column=0, columnspan=2, padx=5, pady=5, sticky=tk.EW)
-        ttk.Button(gen_frame, text="Generate as Signal 2", command=lambda: self.generate_signal(2)).grid(row=4, column=0, columnspan=2, padx=5, pady=5, sticky=tk.EW)
+        # Generate buttons
+        ttk.Button(gen_frame, text="Generate as Signal 1", command=lambda: self.generate_signal(1)).grid(row=10, column=0, columnspan=2, padx=5, pady=5, sticky=tk.EW)
+        ttk.Button(gen_frame, text="Generate as Signal 2", command=lambda: self.generate_signal(2)).grid(row=11, column=0, columnspan=2, padx=5, pady=5, sticky=tk.EW)
 
         gen_frame.columnconfigure(1, weight=1)
 
@@ -140,6 +141,91 @@ class SignalProcessingGUI:
         save_frame = ttk.LabelFrame(parent, text="Save Result")
         save_frame.pack(fill=tk.X, padx=5, pady=5)
         ttk.Button(save_frame, text="Save Result to File", command=self.save_result).pack(fill=tk.X, padx=5, pady=5)
+
+    def _build_dynamic_param_frames(self, parent):
+        """Build parameter frames for each signal type, shown/hidden dynamically"""
+        # Store references to parameter frames and widgets
+        self.param_frames = {}
+        self.param_widgets = {}
+
+        # Sine/Cosine parameters: Frequency + Phase
+        sine_frame = ttk.Frame(parent)
+        self.param_frames["Sine"] = sine_frame
+        self.param_frames["Cosine"] = sine_frame
+        ttk.Label(sine_frame, text="Frequency (cycles):").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+        self.gen_freq = tk.Spinbox(sine_frame, from_=0.1, to=50.0, increment=0.1, format="%.1f")
+        self.gen_freq.delete(0, tk.END)
+        self.gen_freq.insert(0, "1.0")
+        self.gen_freq.grid(row=0, column=1, padx=5, pady=5, sticky=tk.EW)
+        ttk.Label(sine_frame, text="Phase (radians):").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
+        self.gen_phase = tk.Spinbox(sine_frame, from_=0.0, to=6.28, increment=0.1, format="%.2f")
+        self.gen_phase.delete(0, tk.END)
+        self.gen_phase.insert(0, "0.0")
+        self.gen_phase.grid(row=1, column=1, padx=5, pady=5, sticky=tk.EW)
+        sine_frame.columnconfigure(1, weight=1)
+
+        # Step parameters: Threshold position
+        step_frame = ttk.Frame(parent)
+        self.param_frames["Step"] = step_frame
+        ttk.Label(step_frame, text="Step Position (0-1):").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+        self.gen_step_pos = tk.Spinbox(step_frame, from_=0.0, to=1.0, increment=0.1, format="%.1f")
+        self.gen_step_pos.delete(0, tk.END)
+        self.gen_step_pos.insert(0, "0.5")
+        self.gen_step_pos.grid(row=0, column=1, padx=5, pady=5, sticky=tk.EW)
+        step_frame.columnconfigure(1, weight=1)
+
+        # Ramp parameters: Start and End values
+        ramp_frame = ttk.Frame(parent)
+        self.param_frames["Ramp"] = ramp_frame
+        ttk.Label(ramp_frame, text="Start Value:").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+        self.gen_ramp_start = tk.Spinbox(ramp_frame, from_=-10.0, to=10.0, increment=0.1, format="%.1f")
+        self.gen_ramp_start.delete(0, tk.END)
+        self.gen_ramp_start.insert(0, "0.0")
+        self.gen_ramp_start.grid(row=0, column=1, padx=5, pady=5, sticky=tk.EW)
+        ttk.Label(ramp_frame, text="End Value:").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
+        self.gen_ramp_end = tk.Spinbox(ramp_frame, from_=-10.0, to=10.0, increment=0.1, format="%.1f")
+        self.gen_ramp_end.delete(0, tk.END)
+        self.gen_ramp_end.insert(0, "1.0")
+        self.gen_ramp_end.grid(row=1, column=1, padx=5, pady=5, sticky=tk.EW)
+        ramp_frame.columnconfigure(1, weight=1)
+
+        # Impulse parameters: Position
+        impulse_frame = ttk.Frame(parent)
+        self.param_frames["Impulse"] = impulse_frame
+        ttk.Label(impulse_frame, text="Impulse Position (0-1):").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+        self.gen_impulse_pos = tk.Spinbox(impulse_frame, from_=0.0, to=1.0, increment=0.1, format="%.1f")
+        self.gen_impulse_pos.delete(0, tk.END)
+        self.gen_impulse_pos.insert(0, "0.5")
+        self.gen_impulse_pos.grid(row=0, column=1, padx=5, pady=5, sticky=tk.EW)
+        impulse_frame.columnconfigure(1, weight=1)
+
+        # Noise parameters: Standard deviation
+        noise_frame = ttk.Frame(parent)
+        self.param_frames["Noise"] = noise_frame
+        ttk.Label(noise_frame, text="Std Deviation:").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+        self.gen_noise_std = tk.Spinbox(noise_frame, from_=0.01, to=10.0, increment=0.1, format="%.2f")
+        self.gen_noise_std.delete(0, tk.END)
+        self.gen_noise_std.insert(0, "1.0")
+        self.gen_noise_std.grid(row=0, column=1, padx=5, pady=5, sticky=tk.EW)
+        noise_frame.columnconfigure(1, weight=1)
+
+        # Place all frames at the same grid position (row 2, column 0-1), initially hidden
+        for frame in self.param_frames.values():
+            frame.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky=tk.EW)
+            frame.grid_remove()  # Hide initially
+
+        # Show the default (Sine) frame
+        self.param_frames["Sine"].grid()
+
+    def _on_gen_type_change(self, event=None):
+        """Handle signal type change - show/hide appropriate parameter frame"""
+        signal_type = self.gen_type.get()
+        # Hide all frames
+        for frame in self.param_frames.values():
+            frame.grid_remove()
+        # Show the selected type's frame
+        if signal_type in self.param_frames:
+            self.param_frames[signal_type].grid()
 
     def _build_ma_tab(self, parent):
         frame = ttk.LabelFrame(parent, text="Moving Average")
@@ -196,7 +282,16 @@ class SignalProcessingGUI:
         plot_frame.pack(fill=tk.X, padx=5, pady=10)
 
         self.view_var = tk.StringVar(value="signal1")
-        views = [("Signal 1", "signal1"), ("Signal 2", "signal2"), ("Result", "result"), ("Overlay All", "overlay")]
+        views = [
+            ("Signal 1", "signal1"),
+            ("Signal 2", "signal2"),
+            ("Two Signals Only", "two_signals"),
+            ("Result", "result"),
+            ("Convolution View", "conv"),
+            ("Original + Result", "compare_single"),
+            ("S1 + S2 + Result", "compare_double"),
+            ("Overlay All", "overlay")
+        ]
         for text, val in views:
             ttk.Radiobutton(plot_frame, text=text, variable=self.view_var, value=val, command=self.update_plot).pack(anchor=tk.W, padx=5)
 
@@ -278,23 +373,35 @@ class SignalProcessingGUI:
     def generate_signal(self, which):
         try:
             length = int(self.gen_length.get())
-            param = float(self.gen_param.get())
             signal_type = self.gen_type.get()
 
             indices = list(range(length))
             samples = []
 
             if signal_type == "Sine":
-                samples = [np.sin(2 * np.pi * param * i / length) for i in range(length)]
+                freq = float(self.gen_freq.get())
+                phase = float(self.gen_phase.get())
+                samples = [np.sin(2 * np.pi * freq * i / length + phase) for i in range(length)]
+            elif signal_type == "Cosine":
+                freq = float(self.gen_freq.get())
+                phase = float(self.gen_phase.get())
+                samples = [np.cos(2 * np.pi * freq * i / length + phase) for i in range(length)]
             elif signal_type == "Step":
-                samples = [1.0 if i >= length // 2 else 0.0 for i in range(length)]
+                pos = float(self.gen_step_pos.get())
+                threshold = int(pos * length)
+                samples = [1.0 if i >= threshold else 0.0 for i in range(length)]
             elif signal_type == "Ramp":
-                samples = [i / length for i in range(length)]
+                start = float(self.gen_ramp_start.get())
+                end = float(self.gen_ramp_end.get())
+                samples = [start + (end - start) * i / (length - 1) for i in range(length)]
             elif signal_type == "Impulse":
-                samples = [1.0 if i == length // 2 else 0.0 for i in range(length)]
+                pos = float(self.gen_impulse_pos.get())
+                impulse_idx = int(pos * (length - 1))
+                samples = [1.0 if i == impulse_idx else 0.0 for i in range(length)]
             elif signal_type == "Noise":
+                std = float(self.gen_noise_std.get())
                 np.random.seed(42)
-                samples = list(np.random.normal(0, param, length))
+                samples = list(np.random.normal(0, std, length))
 
             signal = (indices, samples)
 
@@ -319,7 +426,7 @@ class SignalProcessingGUI:
             window = int(self.ma_window.get())
             self.result_signal = MovingAverage(self.signal1, window)
             self._update_status(f"Moving Average (window={window}) applied")
-            self.view_var.set("result")
+            self.view_var.set("compare_single")
             self.update_plot()
             self._update_results_text(
                 self._format_signal_info(self.signal1, "Input") + "\n" +
@@ -335,7 +442,7 @@ class SignalProcessingGUI:
         try:
             self.result_signal = FirstDerivative(self.signal1)
             self._update_status("First Derivative applied")
-            self.view_var.set("result")
+            self.view_var.set("compare_single")
             self.update_plot()
             self._update_results_text(
                 self._format_signal_info(self.signal1, "Input") + "\n" +
@@ -351,7 +458,7 @@ class SignalProcessingGUI:
         try:
             self.result_signal = SecondDerivative(self.signal1)
             self._update_status("Second Derivative applied")
-            self.view_var.set("result")
+            self.view_var.set("compare_single")
             self.update_plot()
             self._update_results_text(
                 self._format_signal_info(self.signal1, "Input") + "\n" +
@@ -367,7 +474,7 @@ class SignalProcessingGUI:
         try:
             self.result_signal = Convolve(self.signal1, self.signal2)
             self._update_status("Convolution applied")
-            self.view_var.set("result")
+            self.view_var.set("conv")
             self.update_plot()
             self._update_results_text(
                 self._format_signal_info(self.signal1, "Signal 1") + "\n" +
@@ -384,7 +491,7 @@ class SignalProcessingGUI:
         try:
             self.result_signal = AddSignals([self.signal1, self.signal2])
             self._update_status("Signals added")
-            self.view_var.set("result")
+            self.view_var.set("compare_double")
             self.update_plot()
             self._update_results_text(self._format_signal_info(self.result_signal, "Sum"))
         except Exception as e:
@@ -397,7 +504,7 @@ class SignalProcessingGUI:
         try:
             self.result_signal = SubtractSignals(self.signal1, self.signal2)
             self._update_status("Signal 2 subtracted from Signal 1")
-            self.view_var.set("result")
+            self.view_var.set("compare_double")
             self.update_plot()
             self._update_results_text(self._format_signal_info(self.result_signal, "Difference (S1 - S2)"))
         except Exception as e:
@@ -412,7 +519,7 @@ class SignalProcessingGUI:
             if const is not None:
                 self.result_signal = MultiplySignal(self.signal1, const)
                 self._update_status(f"Multiplied by {const}")
-                self.view_var.set("result")
+                self.view_var.set("compare_single")
                 self.update_plot()
                 self._update_results_text(self._format_signal_info(self.result_signal, f"Multiplied by {const}"))
         except Exception as e:
@@ -427,7 +534,7 @@ class SignalProcessingGUI:
             if k is not None:
                 self.result_signal = ShiftSignal(self.signal1, k)
                 self._update_status(f"Shifted by {k}")
-                self.view_var.set("result")
+                self.view_var.set("compare_single")
                 self.update_plot()
                 self._update_results_text(self._format_signal_info(self.result_signal, f"Shifted by {k}"))
         except Exception as e:
@@ -440,7 +547,7 @@ class SignalProcessingGUI:
         try:
             self.result_signal = FoldSignal(self.signal1)
             self._update_status("Signal folded (reversed)")
-            self.view_var.set("result")
+            self.view_var.set("compare_single")
             self.update_plot()
             self._update_results_text(self._format_signal_info(self.result_signal, "Folded"))
         except Exception as e:
@@ -479,8 +586,38 @@ class SignalProcessingGUI:
             self._plot_signal(self.signal1, "Signal 1", 'b-', 'bo')
         elif view == "signal2" and self.signal2 is not None:
             self._plot_signal(self.signal2, "Signal 2", 'g-', 'go')
+        elif view == "two_signals":
+            # Two signals only: show Signal 1 + Signal 2 without result
+            if self.signal1 is not None:
+                self._plot_signal(self.signal1, "Signal 1", 'b-', 'bo', alpha=0.7)
+            if self.signal2 is not None:
+                self._plot_signal(self.signal2, "Signal 2", 'g-', 'go', alpha=0.7)
+            self.ax.legend()
         elif view == "result" and self.result_signal is not None:
             self._plot_signal(self.result_signal, "Result", 'r-', 'ro')
+        elif view == "conv":
+            # Convolution: show Signal 1 + Result (not Signal 2, which is the kernel)
+            if self.signal1 is not None:
+                self._plot_signal(self.signal1, "Signal 1 (Input)", 'b-', 'bo', alpha=0.7)
+            if self.result_signal is not None:
+                self._plot_signal(self.result_signal, "Convolution Result", 'r-', 'ro')
+            self.ax.legend()
+        elif view == "compare_single":
+            # Single-signal operations: show Signal 1 + Result
+            if self.signal1 is not None:
+                self._plot_signal(self.signal1, "Original", 'b-', 'bo', alpha=0.7)
+            if self.result_signal is not None:
+                self._plot_signal(self.result_signal, "Result", 'r-', 'ro')
+            self.ax.legend()
+        elif view == "compare_double":
+            # Two-signal operations: show Signal 1 + Signal 2 + Result
+            if self.signal1 is not None:
+                self._plot_signal(self.signal1, "Signal 1", 'b-', 'bo', alpha=0.7)
+            if self.signal2 is not None:
+                self._plot_signal(self.signal2, "Signal 2", 'g-', 'go', alpha=0.7)
+            if self.result_signal is not None:
+                self._plot_signal(self.result_signal, "Result", 'r-', 'ro')
+            self.ax.legend()
         elif view == "overlay":
             if self.signal1 is not None:
                 self._plot_signal(self.signal1, "Signal 1", 'b-', 'bo', alpha=0.7)
